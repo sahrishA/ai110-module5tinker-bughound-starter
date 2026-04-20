@@ -174,18 +174,26 @@ class BugHoundAgent:
     def _parse_json_array_of_issues(self, text: str) -> Optional[List[Dict[str, str]]]:
         text = text.strip()
         parsed = self._try_json_loads(text)
+
+        if isinstance(parsed, dict) and isinstance(parsed.get("issues"), list):
+            parsed = parsed["issues"]
+
         if isinstance(parsed, list):
-            return self._normalize_issues(parsed)
+            normalized = self._normalize_issues(parsed)
+            if normalized is not None:
+                return normalized
 
         array_str = self._extract_first_json_array(text)
         if array_str:
             parsed2 = self._try_json_loads(array_str)
             if isinstance(parsed2, list):
-                return self._normalize_issues(parsed2)
+                normalized2 = self._normalize_issues(parsed2)
+                if normalized2 is not None:
+                    return normalized2
 
         return None
 
-    def _normalize_issues(self, arr: List[Any]) -> List[Dict[str, str]]:
+    def _normalize_issues(self, arr: List[Any]) -> Optional[List[Dict[str, str]]]:
         issues: List[Dict[str, str]] = []
         for item in arr:
             if not isinstance(item, dict):
@@ -197,6 +205,10 @@ class BugHoundAgent:
                     "msg": str(item.get("msg", "")).strip(),
                 }
             )
+
+        if not issues and arr:
+            return None
+
         return issues
 
     def _try_json_loads(self, s: str) -> Any:
