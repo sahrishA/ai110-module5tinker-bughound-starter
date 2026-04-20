@@ -47,6 +47,13 @@ def assess_risk(
             reasons.append("Low severity issue detected.")
 
     # ----------------------------
+    # Multiple-issue surface area
+    # ----------------------------
+    if len(issues) > 1:
+        score -= 10
+        reasons.append("Multiple issues detected; fix may touch more of the codebase.")
+
+    # ----------------------------
     # Structural change checks
     # ----------------------------
     if len(fixed_lines) < len(original_lines) * 0.5:
@@ -80,7 +87,8 @@ def assess_risk(
     # ----------------------------
     # Auto-fix policy
     # ----------------------------
-    should_autofix = level == "low"
+    # Require a genuinely clean score AND a single focused fix to auto-apply.
+    should_autofix = level == "low" and score >= 85 and len(issues) <= 1
 
     if not reasons:
         reasons.append("No significant risks detected.")

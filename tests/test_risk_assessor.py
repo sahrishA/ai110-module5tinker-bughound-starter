@@ -36,6 +36,35 @@ def test_high_severity_issue_drives_score_down():
     assert risk["level"] in ("medium", "high")
 
 
+def test_multiple_low_severity_issues_block_autofix():
+    """Multiple issues = larger change surface = no auto-fix even when all are low severity."""
+    original = "def f():\n    print('hi')\n    print('bye')\n    return True\n"
+    fixed = "import logging\n\ndef f():\n    logging.info('hi')\n    logging.info('bye')\n    return True\n"
+    risk = assess_risk(
+        original_code=original,
+        fixed_code=fixed,
+        issues=[
+            {"type": "Code Quality", "severity": "Low", "msg": "print statement 1"},
+            {"type": "Code Quality", "severity": "Low", "msg": "print statement 2"},
+        ],
+    )
+    assert risk["should_autofix"] is False
+    assert any("Multiple" in r for r in risk["reasons"])
+
+
+def test_single_low_severity_still_autofixes():
+    """A single low-severity issue with a clean fix should still auto-apply."""
+    original = "def f():\n    print('hi')\n    return True\n"
+    fixed = "import logging\n\ndef f():\n    logging.info('hi')\n    return True\n"
+    risk = assess_risk(
+        original_code=original,
+        fixed_code=fixed,
+        issues=[{"type": "Code Quality", "severity": "Low", "msg": "print statement"}],
+    )
+    assert risk["should_autofix"] is True
+    assert risk["level"] == "low"
+
+
 def test_missing_return_is_penalized():
     original = "def f(x):\n    return x + 1\n"
     fixed = "def f(x):\n    x + 1\n"
